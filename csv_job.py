@@ -5,7 +5,7 @@ import sys
 import threading
 import traceback
 import time
-from logger import error_log
+from logger import ErrorInfo
 from logger import logger
 from configuration import Config
 from zip import ZIP
@@ -45,7 +45,7 @@ class CSVJob(object):
 
         self.load_csv_model()
 
-    @error_log
+    @ErrorInfo
     def load_resource_csv(self):
         """"""
         self.logger.info("load resource csv")
@@ -74,7 +74,7 @@ class CSVJob(object):
             for row in csv_reader:
                 self._csv_datas.append(row)
 
-    @error_log
+    @ErrorInfo
     def generate_new_csv(self):
         print("------partNo个数：{}".format(len(self._partNos)))
         print("------asc_code: {}".format(len(self._asc_codes)))

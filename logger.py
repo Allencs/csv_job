@@ -37,14 +37,18 @@ class Logger(object):
 logger = Logger("csv_job")
 
 
-def error_log(func):
-    def inner_func(*args, **kwargs):
+class ErrorInfo(object):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        print("******ERROR FOUND******")
         try:
-            return func(*args, **kwargs)
+            self.func(*args, **kwargs)
         except Exception:
             with open("error_info.log", 'a+', encoding='utf-8') as f:
-                f.write("{}\n".format(func.__name__) + traceback.format_exc() + "\n\t")
-    return inner_func
+                f.write("{}\n".format(self.func.__name__) + traceback.format_exc() + "\n\t")
+
 
 
 
