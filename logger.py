@@ -2,6 +2,13 @@ import logging
 import traceback
 
 
+"""
+日志处理模块：
+（1）Logger类处理器
+（2）装饰器,使用文件流输出错误详细信息
+"""
+
+
 class Logger(object):
     def __init__(self, name, clevel=logging.DEBUG, flevel=logging.DEBUG):
         self.logger = logging.getLogger(name)
@@ -34,23 +41,18 @@ class Logger(object):
         self.warning(message)
 
 
-logger = Logger("csv_job")
-
-
-class ErrorInfo(object):
-    def __init__(self, func):
-        self.func = func
-
-    def __call__(self, *args, **kwargs):
-        print("******ERROR FOUND******")
+def ErrorInfo(func):
+    def inner_func(*args, **kwargs):
         try:
-            self.func(*args, **kwargs)
+            func(*args, **kwargs)
         except Exception:
+            print("******ERROR FOUND******")
             with open("error_info.log", 'a+', encoding='utf-8') as f:
-                f.write("{}\n".format(self.func.__name__) + traceback.format_exc() + "\n\t")
+                f.write("{}\n".format(func.__name__) + traceback.format_exc() + "\n\t")
+    return inner_func
 
 
-
+logger = Logger("csv_job")
 
 
 
