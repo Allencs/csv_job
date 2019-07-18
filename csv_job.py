@@ -125,9 +125,9 @@ class CSVJob(object):
 
         else:
             _asc_count = 0
-            for _asc_code in self._asc_codes:
+            for _asc_code_ in self._asc_codes:
 
-                _csv_name = _asc_code + self.csv_model_name
+                _csv_name = _asc_code_ + self.csv_model_name
                 _csv_datas_ = self._csv_datas.copy()
 
                 if _asc_count >= int(self.asc_codes_count):
@@ -138,7 +138,7 @@ class CSVJob(object):
                     lines_2 = 0
                     for count, row in enumerate(_csv_datas_):
                         if count == 1:
-                            row[0] = _asc_code
+                            row[0] = _asc_code_
                         elif count > 2:
                             row[0] = self._partNos[lines_2]
                         if lines_2 >= int(self.partNos_count) + 3:
