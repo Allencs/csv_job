@@ -3,7 +3,9 @@ from logger import logger
 
 
 class Config(object):
-
+    """
+    配置文件类
+    """
     def __init__(self):
         self.cp = ConfigParser()
         self.cp.read("config.cfg")
