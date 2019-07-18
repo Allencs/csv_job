@@ -120,30 +120,35 @@ class CSVJob(object):
                         lines += 1
 
                 asc_count += 1
+                csv_datas.clear()
                 self.logger.info("{} is done".format(csv_name))
 
         else:
-            asc_count_2 = 0
-            for asc_code in self._asc_codes:
-                csv_name = asc_code + self.csv_model_name
+            _asc_count = 0
+            for _asc_code in self._asc_codes:
 
-                if asc_count_2 >= int(self.asc_codes_count):
+                _csv_name = _asc_code + self.csv_model_name
+                _csv_datas_ = self._csv_datas.copy()
+
+                if _asc_count >= int(self.asc_codes_count):
                     break
 
-                with open(os.path.join(self.new_file_dir, csv_name), 'w+', newline='', encoding='utf-8') as csvfile:
+                with open(os.path.join(self.new_file_dir, _csv_name), 'w+', newline='', encoding='utf-8') as csvfile:
                     writer = csv.writer(csvfile)
                     lines_2 = 0
-                    for count, row in enumerate(self._csv_datas):
+                    for count, row in enumerate(_csv_datas_):
                         if count == 1:
-                            row[0] = asc_code
+                            row[0] = _asc_code
                         elif count > 2:
                             row[0] = self._partNos[lines_2]
                         if lines_2 >= int(self.partNos_count) + 3:
                             break
                         writer.writerow(row)
                         lines_2 += 1
-                asc_count_2 += 1
-                self.logger.info("{} is done".format(csv_name))
+
+                _asc_count += 1
+                _csv_datas_.clear()
+                self.logger.info("{} is done".format(_csv_name))
         self.logger.info("{} thread is done".format(threading.currentThread().getName()))
 
     """
@@ -206,7 +211,6 @@ class CSVJob(object):
 if __name__ == '__main__':
     csv_job = CSVJob()
     csv_job.start()
-
 
 
 
