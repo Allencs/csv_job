@@ -89,8 +89,10 @@ class CSVJob(object):
         生成以ASC——Code为前缀的CSV文件
         :return: None
         """
-        print("------partNo个数：{}".format(len(self._partNos)))
-        print("------asc_code: {}".format(len(self._asc_codes)))
+        print("partNos count:".ljust(20, ".") + str(len(self._partNos)).rjust(8))
+        print("asc_code count:".ljust(20, ".") + str(len(self._asc_codes)).rjust(8))
+        print("csv model lines:".ljust(20, ".") + str(len(self._csv_datas)).rjust(8))
+
         if not os.path.exists(self.new_file_dir):
             os.mkdir(self.new_file_dir)
         if int(self.asc_codes_count) <= 400:
@@ -111,7 +113,7 @@ class CSVJob(object):
                         if count == 1:
                             row[0] = asc_code
                         elif count > 2:
-                            row[0] = self._partNos[count]
+                            row[0] = self._partNos[lines]
                         if lines >= int(self.partNos_count) + 3:
                             break
                         writer.writerow(row)
@@ -121,25 +123,26 @@ class CSVJob(object):
                 self.logger.info("{} is done".format(csv_name))
 
         else:
-            asc_count = 0
+            asc_count_2 = 0
             for asc_code in self._asc_codes:
                 csv_name = asc_code + self.csv_model_name
 
-                if asc_count >= int(self.asc_codes_count):
+                if asc_count_2 >= int(self.asc_codes_count):
                     break
 
                 with open(os.path.join(self.new_file_dir, csv_name), 'w+', newline='', encoding='utf-8') as csvfile:
                     writer = csv.writer(csvfile)
-                    lines = 0
+                    lines_2 = 0
                     for count, row in enumerate(self._csv_datas):
                         if count == 1:
                             row[0] = asc_code
                         elif count > 2:
-                            row[0] = self._partNos[count]
-                        if lines >= int(self.partNos_count) + 3:
+                            row[0] = self._partNos[lines_2]
+                        if lines_2 >= int(self.partNos_count) + 3:
                             break
                         writer.writerow(row)
-                asc_count += 1
+                        lines_2 += 1
+                asc_count_2 += 1
                 self.logger.info("{} is done".format(csv_name))
         self.logger.info("{} thread is done".format(threading.currentThread().getName()))
 
@@ -169,6 +172,7 @@ class CSVJob(object):
         :return: None
         """
         zip = ZIP()
+        time.sleep(1)
         self.logger.info("zip thread start")
         while True:
             self.add_zipfiles()
