@@ -89,6 +89,8 @@ class CSVJob(object):
         生成以ASC——Code为前缀的CSV文件
         :return: None
         """
+        self.clear_dirs()
+
         print("partNos count:".ljust(20, ".") + str(len(self._partNos)).rjust(8))
         print("asc_code count:".ljust(20, ".") + str(len(self._asc_codes)).rjust(8))
         print("csv model lines:".ljust(20, ".") + str(len(self._csv_datas)).rjust(8))
@@ -159,6 +161,18 @@ class CSVJob(object):
                     full_path_name = os.path.join(root, file)
                     self._csv_files.add(full_path_name)
     """
+
+    @ErrorInfo
+    def clear_dirs(self):
+        if os.path.exists(self.new_file_dir):
+            for file in os.listdir(self.new_file_dir):
+                os.remove(os.path.join(self.new_file_dir, file))
+            self.logger.info("directory <new_csv> is cleared")
+
+        if os.path.exists(ZIP.default_dir):
+            for zip_file in os.listdir(ZIP.default_dir):
+                os.remove(os.path.join(ZIP.default_dir, zip_file))
+            self.logger.info("directory <CSV_ZIP> is cleared")
 
     def add_zipfiles(self):
         """
