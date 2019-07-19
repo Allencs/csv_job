@@ -1,7 +1,5 @@
 import csv
 import os
-import random
-import sys
 import threading
 import traceback
 import time
@@ -9,12 +7,16 @@ from logger import ErrorInfo
 from logger import logger
 from configuration import Config
 from zip import ZIP
+import queue
 
 
 class CSVJob(object):
 
     _csv_files = set()
     """待处理csv文件"""
+
+    _new_csv_files = set()
+    """新生成csv文件"""
 
     _csv_datas = []
     """csv行列表"""
@@ -30,6 +32,9 @@ class CSVJob(object):
 
     _already_zipped = set()
     """已压缩文件"""
+
+    tozip_file_queue = queue.Queue(maxsize=-1)
+    """待压缩文件队列"""
 
     def __init__(self):
         cnf = Config()
@@ -107,8 +112,9 @@ class CSVJob(object):
 
                 csv_datas = self._csv_datas.copy()
                 csv_name = asc_code + self.csv_model_name
+                fullpath_csv_name = os.path.join(self.new_file_dir, csv_name)
 
-                with open(os.path.join(self.new_file_dir, csv_name), 'w+', newline='', encoding='utf-8') as csvfile:
+                with open(fullpath_csv_name, 'w+', newline='', encoding='utf-8') as csvfile:
                     writer = csv.writer(csvfile)
                     lines = 0
                     for count, row in enumerate(csv_datas):
@@ -121,8 +127,10 @@ class CSVJob(object):
                         writer.writerow(row)
                         lines += 1
 
+                self._new_csv_files.add(fullpath_csv_name)
                 asc_count += 1
                 csv_datas.clear()
+
                 self.logger.info("{} is done".format(csv_name))
 
         else:
@@ -134,6 +142,8 @@ class CSVJob(object):
 
                 if _asc_count >= int(self.asc_codes_count):
                     break
+
+                _fullpath_csv_name = os.path.join(self.new_file_dir, _csv_name)
 
                 with open(os.path.join(self.new_file_dir, _csv_name), 'w+', newline='', encoding='utf-8') as csvfile:
                     writer = csv.writer(csvfile)
@@ -148,9 +158,11 @@ class CSVJob(object):
                         writer.writerow(row)
                         lines_2 += 1
 
+                self._new_csv_files.add(_fullpath_csv_name)
                 _asc_count += 1
                 _csv_datas_.clear()
                 self.logger.info("{} is done".format(_csv_name))
+
         self.logger.info("{} thread is done".format(threading.currentThread().getName()))
 
     """
@@ -164,6 +176,10 @@ class CSVJob(object):
 
     @ErrorInfo
     def clear_dirs(self):
+        """
+        删除自动生成的文件中的内容，避免出现脏文件
+        :return: None
+        """
         if os.path.exists(self.new_file_dir):
             for file in os.listdir(self.new_file_dir):
                 os.remove(os.path.join(self.new_file_dir, file))
@@ -176,7 +192,7 @@ class CSVJob(object):
 
     def add_zipfiles(self):
         """
-        添加待压缩CSV文件
+        添加待压缩CSV文件(该方法用于非同步队列)
         """
         files = os.listdir(self.new_file_dir)
         for file in files:
@@ -184,15 +200,64 @@ class CSVJob(object):
             if full_filepath not in self._already_zipped:  # 若已经压缩，则不加入集合
                 self._zip_files.add(full_filepath)
 
-    def zip(self, thread):
+    @ErrorInfo
+    def check_line(self, thread):
         """
-        压缩文件，如果thread线程未结束，等待1s继续查找添加CSV文件
-        :param thread: CSV文件处理线程
+        检查生成的csv文件行数，将正确的csv文件放入待压缩队列
+        :param thread: generate_new_csv线程
+        :return: None
+        """
+        check_list = []
+        while True:
+            if len(self._new_csv_files) == 0:
+                if threading.Thread.isAlive(thread):
+                    time.sleep(1)
+                else:
+                    break
+
+            fullpath_new_csv = self._new_csv_files.pop()
+            with open(fullpath_new_csv, 'r', newline='', encoding='utf-8') as csvfile:
+                csv_reader = csv.reader(csvfile, dialect='excel')
+                line_num = 0
+                while True:
+                    try:
+                        csv_reader.__next__()
+                        line_num += 1
+                    except StopIteration:
+                        break
+
+                if not line_num == int(self.partNos_count) + 3:
+                    check_list.append(fullpath_new_csv)
+                    print("******ERROR CSVFIE FOUND******")
+                    with open("error_csvfiles.log", "a+", encoding='utf-8') as f:
+                        f.write(fullpath_new_csv + "\n")
+                else:
+                    self.tozip_file_queue.put(fullpath_new_csv)
+
+        if len(check_list) == 0:
+            self.logger.info("csv files are checked, no errors")
+
+    def zip(self):
+        """
+        压缩文件，从队列中取出检查无误的csv文件进行压缩处理
         :return: None
         """
         zip = ZIP()
         time.sleep(1)
         self.logger.info("zip thread start")
+
+        while True:
+            try:
+                tozip_file = self.tozip_file_queue.get(True, 2)
+            except queue.Empty:
+                break
+            else:
+                if tozip_file not in self._already_zipped:
+                    zip(tozip_file)
+                    self._already_zipped.add(tozip_file)
+
+        """
+        # 用于非同步队列               
         while True:
             self.add_zipfiles()
             try:
@@ -207,6 +272,8 @@ class CSVJob(object):
                     self._already_zipped.add(tozip_file)
             except Exception:
                 print("{}\n".format("zip") + traceback.format_exc())
+        """
+
         self.logger.info("all tasks done")
         time_used = int((time.time() - self.start_time))
         self.logger.info("spend time: {}s".format(time_used))
@@ -215,9 +282,11 @@ class CSVJob(object):
     def start(self):
         threads = []
         t1 = threading.Thread(target=self.generate_new_csv, name="generate_new_csv")
-        t2 = threading.Thread(target=self.zip, args=(t1,), name="zip")
+        t2 = threading.Thread(target=self.zip, name="zip")
+        t3 = threading.Thread(target=self.check_line, args=(t1,), name="check_line")
         threads.append(t1)
         threads.append(t2)
+        threads.append(t3)
         for thread in threads:
             thread.start()
 
