@@ -11,7 +11,6 @@ import queue
 
 
 class CSVJob(object):
-
     _csv_files = set()
     """待处理csv文件"""
 
@@ -96,9 +95,9 @@ class CSVJob(object):
         """
         self.clear_dirs()
 
-        print("partNos count:".ljust(20, ".") + str(len(self._partNos)).rjust(8))
-        print("asc_code count:".ljust(20, ".") + str(len(self._asc_codes)).rjust(8))
-        print("csv model lines:".ljust(20, ".") + str(len(self._csv_datas)).rjust(8))
+        print("".join(["partNos count:".ljust(20, ".") + str(len(self._partNos)).rjust(8) + "\n",
+                       "asc_code count:".ljust(20, ".") + str(len(self._asc_codes)).rjust(8) + "\n",
+                       "csv model lines:".ljust(20, ".") + str(len(self._csv_datas)).rjust(8)]))
 
         if not os.path.exists(self.new_file_dir):
             os.mkdir(self.new_file_dir)
@@ -214,25 +213,25 @@ class CSVJob(object):
                     time.sleep(1)
                 else:
                     break
+            else:
+                fullpath_new_csv = self._new_csv_files.pop()
+                with open(fullpath_new_csv, 'r', newline='', encoding='utf-8') as csvfile:
+                    csv_reader = csv.reader(csvfile, dialect='excel')
+                    line_num = 0
+                    while True:
+                        try:
+                            csv_reader.__next__()
+                            line_num += 1
+                        except StopIteration:
+                            break
 
-            fullpath_new_csv = self._new_csv_files.pop()
-            with open(fullpath_new_csv, 'r', newline='', encoding='utf-8') as csvfile:
-                csv_reader = csv.reader(csvfile, dialect='excel')
-                line_num = 0
-                while True:
-                    try:
-                        csv_reader.__next__()
-                        line_num += 1
-                    except StopIteration:
-                        break
-
-                if not line_num == int(self.partNos_count) + 3:
-                    check_list.append(fullpath_new_csv)
-                    print("******ERROR CSVFIE FOUND******")
-                    with open("error_csvfiles.log", "a+", encoding='utf-8') as f:
-                        f.write(fullpath_new_csv + "\n")
-                else:
-                    self.tozip_file_queue.put(fullpath_new_csv)
+                    if not line_num == int(self.partNos_count) + 3:
+                        check_list.append(fullpath_new_csv)
+                        print("******ERROR CSVFIE FOUND******")
+                        with open("error_csvfiles.log", "a+", encoding='utf-8') as f:
+                            f.write(fullpath_new_csv + "\n")
+                    else:
+                        self.tozip_file_queue.put(fullpath_new_csv)
 
         if len(check_list) == 0:
             self.logger.info("csv files are checked, no errors")
@@ -243,7 +242,6 @@ class CSVJob(object):
         :return: None
         """
         zip = ZIP()
-        time.sleep(1)
         self.logger.info("zip thread start")
 
         while True:
@@ -294,10 +292,3 @@ class CSVJob(object):
 if __name__ == '__main__':
     csv_job = CSVJob()
     csv_job.start()
-
-
-
-
-
-
-
